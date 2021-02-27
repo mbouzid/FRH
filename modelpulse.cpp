@@ -403,7 +403,7 @@ void ModelPulse::prepareRelaxedModel(IloEnv & env, IloModel & model, const IloIn
 
 }
 
-void ModelPulse::convertToBool(IloEnv & env, IloModel & model, const IloInt& from, const IloInt& to)
+void ModelPulse::convertToBool(IloEnv & env, IloExtractableArray& conversions, const IloInt& from, const IloInt& to)
 {
 	IloOplModel opl(_dat.getOplModel());
 	IloInt n(opl.getElement("n").asInt());
@@ -413,7 +413,7 @@ void ModelPulse::convertToBool(IloEnv & env, IloModel & model, const IloInt& fro
 		for (IloInt t(from); t <= to; ++t)
 		{
 		
-			model.add(IloConversion(env, _x[i][t], ILOBOOL));
+			conversions.add(IloConversion(env, _x[i][t], ILOBOOL));
 		}
 	}
 
@@ -486,17 +486,19 @@ void ModelPulse::relaxAndFix(IloEnv & env, const IloInt& sigma, const IloInt& de
 			fix(subProblem, 0, to);
 		}
 
+		IloExtractableArray conversions(env);
 		if (k == 0)
 		{
 			std::cout << "cast to boolean from " << a << " to " << b << std::endl;
-			convertToBool(env, subProblem,a, b);
+			convertToBool(env, conversions,a, b);
 		}
 		else
 		{
 			std::cout << "cast to boolean from " << bprev+1 << " to " << b << std::endl;
-			convertToBool(env, subProblem,bprev+1, b);
+			convertToBool(env, conversions,bprev+1, b);
 		}
 
+		subProblem.add(conversions);
 
 
 		prepareRelaxedModel(env, subProblem, a, b);
@@ -570,6 +572,7 @@ void ModelPulse::relaxAndFix(IloEnv & env, const IloInt& sigma, const IloInt& de
 			b = T;
 		}
 
+		conversions.endElements();
 
 	}
 
