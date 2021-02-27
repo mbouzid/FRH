@@ -1,6 +1,7 @@
 #include "modelpulse.h"
 #include <algorithm>
 #include <vector>
+#include <map>
 
 const char* ModelPulse::s_params = "params.mod";
 
@@ -130,10 +131,11 @@ void ModelPulse::initObj(IloEnv& env)
 				}
 			}
 
-
-			profit += _x[j][t] * (f.getSub(j).get(t + p.get(j) - 1) - energyCostProcessing - energyCostSetup );
-
+			profit += _x[j][t]*(-energyCostProcessing - energyCostSetup);
+			
 		}
+	
+		profit += _omega[j] * e.get(j);//_x[j][t] * (f.getSub(j).get(t + p.get(j) - 1) - energyCostProcessing - energyCostSetup -_alpha[j] ) ;
 
 		obj += profit;
 
@@ -470,98 +472,15 @@ void ModelPulse::relaxAndFix(IloEnv & env, const IloInt& sigma, const IloInt& de
 
 
 	IloInt bprev(b);
-	bool infeasible(false);
+	bool ok(true);
 
 	while (b < T)
 	{
-		std::cout << "a=" << a << ",b=" << b << std::endl;
-		IloModel subProblem(env);
-
-		subProblem.add(_model.getImpl());
-
-		if (k > 0)
-		{
-			IloInt to(std::max(IloInt(0), a -1 ));
-			std::cout << "fix from " << 0 << " to " << to << std::endl;
-			fix(subProblem, 0, to);
-		}
-
-		IloExtractableArray conversions(env);
-		convertToBool(env, conversions,0, b);
-		/*if (k == 0)
-		{
-			std::cout << "cast to boolean from " << a << " to " << b << std::endl;
-			convertToBool(env, conversions,a, b);
-		}
-		else
-		{
-			std::cout << "cast to boolean from " << bprev+1 << " to " << b << std::endl;
-			convertToBool(env, conversions,bprev+1, b);
-		}*/
-
-		subProblem.add(conversions);
-
-
-		prepareRelaxedModel(env, subProblem, a, b);
-
-
-		IloCplex cplx(env);
-		cplx.extract(subProblem);
 		
-		/*std::ostringstream oss;
-		oss << "subModel_" << a << "_" << b << "_pulse" << ".LP";
-		std::string fname(oss.str());
-		cplx.exportModel(fname.c_str()); */
-		
+		ok = relaxAndFixLoop(env, k, a, b, delta);
 
-		cplx.setOut(env.getNullStream());
-		cplx.setParam(IloCplex::Param::Threads, 4);
-		cplx.setParam(IloCplex::Param::TimeLimit, 10);
-
-		if (cplx.solve())
+		if (not ok)
 		{
-
-
-			std::cerr << cplx.getStatus() << std::endl;
-			//printVars(cplx);
-
-			IloInt to(b - delta -1);
-			std::cout << "get from " << a << " to " << to << std::endl;
-			get(cplx, a, to);
-
-			IloInt n(opl.getElement("n").asInt());
-			for (IloInt i(0); i <= n; ++i)
-			{
-				IloInt val(cplx.getValue(_omega[i]));
-				if (val==1)
-					std::cout << "omega#" << i  << "=" << val << std::endl;
-			}
-
-			for (IloInt i(0); i <= n; ++i)
-			{
-				for (IloInt j(1); j <= n; ++j)
-				{
-					if (cplx.isExtracted(_u[i][j]))
-					{
-						IloInt val(cplx.getValue(_u[i][j]));
-						if (val==1)
-							std::cout << "u#" << i << "#" << j << "=" << val << std::endl;
-					}
-				}
-			}
-
-			std::cout << "partial obj=" << cplx.getObjValue() << std::endl;
-
-		}
-		else
-		{  
-			std::cerr << cplx.getStatus() << std::endl;
-
-
-			infeasible = true;
-			
-			//printConflict(env, cplx, subProblem);
-
 			break;
 		}
 
@@ -575,11 +494,10 @@ void ModelPulse::relaxAndFix(IloEnv & env, const IloInt& sigma, const IloInt& de
 			b = T;
 		}
 
-		conversions.endElements();
 
 	}
 
-	if (not infeasible)
+	if (ok)
 	{
 		IloInt n(opl.getElement("n").asInt());
 		for (IloInt i(0); i <= n; ++i)
@@ -591,6 +509,72 @@ void ModelPulse::relaxAndFix(IloEnv & env, const IloInt& sigma, const IloInt& de
 			std::cout << std::endl;
 		}
 	}
+
+}
+
+bool ModelPulse::relaxAndFixLoop(IloEnv& env, const IloInt& k, const IloInt& a, const IloInt& b, const IloInt& delta)
+{
+	std::cout << "a=" << a << ",b=" << b << std::endl;
+	IloModel subProblem(env);
+
+	subProblem.add(_model.getImpl());
+
+	if (k > 0)
+	{
+		IloInt to(std::max(IloInt(0), a - 1));
+		std::cout << "fix from " << 0 << " to " << to << std::endl;
+		fix(subProblem, 0, to);
+	}
+
+	IloExtractableArray conversions(env);
+	convertToBool(env, conversions, 0, b);
+
+
+	subProblem.add(conversions);
+
+
+	prepareRelaxedModel(env, subProblem, a, b);
+
+
+	IloCplex cplx(env);
+	cplx.extract(subProblem);
+
+	//disableMIPOptions(cplx);
+
+	/*if (k == 0)
+	{
+		addMIPStart_ATCS(env, cplx);
+	}*/
+
+	cplx.setOut(env.getNullStream());
+	cplx.setParam(IloCplex::Param::Threads, 4);
+	cplx.setParam(IloCplex::Param::TimeLimit, 60);
+
+	bool ok(cplx.solve());
+	if (ok)
+	{
+
+		std::cerr << cplx.getStatus() << std::endl;
+
+
+		IloInt to(b - delta - 1);
+		std::cout << "get from " << a << " to " << to << std::endl;
+		get(cplx, a, to);
+
+
+		std::cout << "partial obj=" << cplx.getObjValue() << std::endl;
+
+	}
+	else
+	{
+		std::cerr << cplx.getStatus() << std::endl;
+
+	}
+
+
+	conversions.endElements();
+
+	return ok;
 
 }
 
@@ -624,6 +608,145 @@ void ModelPulse::printVars(IloCplex& cplx)
 		}
 		std::cout << std::endl;
 	}
+}
+
+void ModelPulse::printOmega(IloCplex& cplx)
+{
+	IloOplModel opl(_dat.getOplModel());
+	IloInt n(opl.getElement("n").asInt());
+	for (IloInt i(0); i <= n; ++i)
+	{
+		IloInt val(cplx.getValue(_omega[i]));
+		if (val == 1)
+			std::cout << "omega#" << i << "=" << val << std::endl;
+	}
+}
+
+void ModelPulse::printU(IloCplex& cplx)
+{
+	IloOplModel opl(_dat.getOplModel());
+	IloInt n(opl.getElement("n").asInt());
+	for (IloInt i(0); i <= n; ++i)
+	{
+		for (IloInt j(1); j <= n; ++j)
+		{
+			if (cplx.isExtracted(_u[i][j]))
+			{
+				IloInt val(cplx.getValue(_u[i][j]));
+				if (val == 1)
+					std::cout << "u#" << i << "#" << j << "=" << val << std::endl;
+			}
+		}
+	}
+}
+
+void ModelPulse::addMIPStart_ATCS(IloEnv& env, IloCplex& cplx)
+{
+	IloOplModel opl(_dat.getOplModel());
+	IloInt n(opl.getElement("n").asInt());
+	IloIntMap s(opl.getElement("s").asIntMap());
+	IloIntMap r(opl.getElement("r").asIntMap());
+	IloIntMap p(opl.getElement("p").asIntMap());
+	IloIntMap d(opl.getElement("d").asIntMap());
+
+	IloIntMap db(opl.getElement("db").asIntMap());
+
+	IloIntMap e(opl.getElement("e").asIntMap());
+	IloNumMap w(opl.getElement("w").asNumMap());
+
+
+	std::vector<IloInt> orders;
+	for (IloInt i(1); i <= n; ++i)
+	{
+		orders.push_back(i);
+	}
+
+	IloNumVarArray vars(env);
+	IloNumArray vals(env);
+
+	// ATCS rule
+	IloInt t(0);
+	IloInt l(0);
+
+	vars.add(_x[l][t]);
+	vals.add(IloInt(1));
+
+	while (not orders.empty())
+	{
+
+		std::map <IloInt, double> ATCS;
+
+		for (IloInt i : orders)
+		{
+			ATCS.emplace(i, 0.0);
+		}
+
+
+		IloNum pavg(0);
+		for (IloInt i : orders)
+		{
+			pavg += p.get(i);
+		}
+		pavg = pavg / (IloNum)orders.size();
+
+
+		IloNum savg(0.0);
+		for (IloInt i : orders)
+		{
+			for (IloInt j : orders)
+			{
+				savg += s.getSub(i).get(j);
+			}
+
+		}
+		savg = savg / (IloNum)(orders.size() * orders.size());
+
+
+
+		for (IloInt i : orders)
+		{
+
+			double term1(((IloNum)w.get(i) / (IloNum)p.get(i)));
+
+			double term2(-(IloNum)std::max((IloNum)(d.get(i) - p.get(i) - t), (IloNum)0) / (0.9 * pavg));
+			double term3(-((IloNum)s.getSub(l).get(i) / (0.9 * savg)));
+
+
+			double t1(std::exp(term2)), t2(std::exp(term3));
+
+			ATCS[i] = (term1)*t1 * t2;
+
+
+
+			std::sort(orders.begin(), orders.end(), [&ATCS](const IloInt& i, const IloInt& j)
+				{
+					return ATCS.at(i) >= ATCS.at(j);
+				});
+
+
+		}
+
+
+		std::vector<IloNum> atcs;
+		for (IloInt i : orders)
+		{
+			atcs.push_back(ATCS.at(i));
+		}
+		IloInt i(orders.at(0));
+		t = std::max(t, r.get(i) +1 ) + s.getSub(l).get(i) ;
+		l = i;
+
+		std::cout << "i=" << i << ", t=" << t << std::endl;
+		vars.add(_x[i][t]);
+		vals.add(IloInt(1));
+
+		orders.erase(std::find(orders.begin(), orders.end(), l));
+
+
+	}
+
+	cplx.addMIPStart(vars, vals);
+
 }
 
 void printConflict(IloEnv & env, IloCplex& cplx, const IloModel& model)
@@ -666,4 +789,72 @@ void printConflict(IloEnv & env, IloCplex& cplx, const IloModel& model)
 	}
 	std::cout << std::endl;
 
+}
+
+void exportModel(IloCplex& cplx, const IloInt& a, const IloInt& b)
+{
+	std::ostringstream oss;
+	oss << "subModel_" << a << "_" << b << "_pulse" << ".LP";
+	std::string fname(oss.str());
+	cplx.exportModel(fname.c_str());
+}
+
+void disableMIPOptions(IloCplex& cplx)
+{
+	cplx.setParam(IloCplex::Cliques, -1);
+	cplx.setParam(IloCplex::FPHeur, -1);
+	cplx.setParam(IloCplex::MIRCuts, -1);
+
+	cplx.setParam(IloCplex::Covers, -1);
+	cplx.setParam(IloCplex::DisjCuts, -1);
+	cplx.setParam(IloCplex::FlowCovers, -1);
+
+	cplx.setParam(IloCplex::FracCuts, -1);
+	cplx.setParam(IloCplex::GUBCovers, -1);
+	cplx.setParam(IloCplex::ZeroHalfCuts, -1);
+	cplx.setParam(IloCplex::ImplBd, -1);
+	cplx.setParam(IloCplex::Probe, -1);
+	cplx.setParam(IloCplex::HeurFreq, -1);
+	cplx.setParam(IloCplex::RINSHeur, -1);
+	cplx.setParam(IloCplex::CutPass, -1); 
+	//cplx.setParam(IloCplex::Param::Preprocessing::Presolve, CPX_OFF);
+	
+	/*	 
+
+
+	 	
+	
+	cplx.setParam(IloCplex::AggInd, 0);	
+		
+	cplx.setParam(IloCplex::RelaxPreInd, 0);
+	cplx.setParam(IloCplex::Param::Preprocessing::Presolve, CPX_OFF);
+
+	cplx.setParam(IloCplex::SubMIPNodeLimit,1);	
+	cplx.setParam(IloCplex::MIPEmphasis, 3);	
+		cplx.setParam(IloCplex::PrePass, 0);
+	cplx.setParam(IloCplex::RepeatPresolve, 0);
+	cplx.setParam(IloCplex::BndStrenInd, 0);  
+
+	cplx.setParam(IloCplex::CoeRedInd,0);
+	cplx.setParam(IloCplex::CutsFactor, 1);	  
+	cplx.setParam(IloCplex::Reduce, 2);		
+
+	cplx.setParam(IloCplex::MIPSearch, 1);	   */
+}
+
+void exportLP(IloEnv & env, const char* modfile, const char* datfile, const char * lpfile)
+{
+	IloOplRunConfiguration rc(env, modfile,datfile);
+	IloOplModel opl(rc.getOplModel());
+
+
+	IloOplSettings settings(opl.getSettings());
+	settings.setWithLocations(IloTrue);
+	settings.setWithNames(IloTrue);
+
+	opl.generate();
+
+	opl.getCplex().exportModel(lpfile);
+
+	opl.end();
 }

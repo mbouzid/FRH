@@ -341,3 +341,5 @@ healthchecksdb
 
 # dat
 *.dat
+*.LP
+/pulse.mod

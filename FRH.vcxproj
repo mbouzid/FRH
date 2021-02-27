@@ -141,10 +141,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ilobenders.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="modelpulse.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ilobenders.h" />
     <ClInclude Include="modelpulse.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

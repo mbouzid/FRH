@@ -65,15 +65,28 @@ class ModelPulse
 		void fix(IloModel & model, const IloInt& from, const IloInt& to);
 
 		void addMIPStart(IloEnv & env, IloCplex & cplx, const IloInt& from, const IloInt& to);
+		void addMIPStart_ATCS(IloEnv& env, IloCplex & cplx);
 
 		void relaxAndFix(IloEnv & env, const IloInt & sigma, const IloInt & d);
+
+		bool relaxAndFixLoop(IloEnv& env, const IloInt & k, const IloInt& a , const IloInt & b, const IloInt & delta);
 
 		void get(IloCplex& cplx, const IloInt& from, const IloInt& to);
 		
 		void printVars(IloCplex& cplx);
+		void printOmega(IloCplex& cplx);
+		void printU(IloCplex& cplx);
+
+	
+
+		
 
 
 };
 
 void printConflict(IloEnv & env, IloCplex& cplx, const IloModel& model);
+void exportModel(IloCplex& cplx, const IloInt& a, const IloInt& b);
+void disableMIPOptions(IloCplex& cplx);
+
+void exportLP(IloEnv& env, const char* modfile, const char* datfile, const char* lpfile);
 
