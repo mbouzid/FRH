@@ -131,7 +131,7 @@ void ModelPulse::initObj(IloEnv& env)
 			}
 
 
-			profit += _x[j][t] * (f.getSub(j).get(t + p.get(j) - 1) - energyCostProcessing - energyCostSetup - 0.5* f.getSub(j).get(t + p.get(j) - 1)*_alpha[j]);
+			profit += _x[j][t] * (f.getSub(j).get(t + p.get(j) - 1) - energyCostProcessing - energyCostSetup );
 
 		}
 
@@ -487,7 +487,8 @@ void ModelPulse::relaxAndFix(IloEnv & env, const IloInt& sigma, const IloInt& de
 		}
 
 		IloExtractableArray conversions(env);
-		if (k == 0)
+		convertToBool(env, conversions,0, b);
+		/*if (k == 0)
 		{
 			std::cout << "cast to boolean from " << a << " to " << b << std::endl;
 			convertToBool(env, conversions,a, b);
@@ -496,7 +497,7 @@ void ModelPulse::relaxAndFix(IloEnv & env, const IloInt& sigma, const IloInt& de
 		{
 			std::cout << "cast to boolean from " << bprev+1 << " to " << b << std::endl;
 			convertToBool(env, conversions,bprev+1, b);
-		}
+		}*/
 
 		subProblem.add(conversions);
 
@@ -507,13 +508,15 @@ void ModelPulse::relaxAndFix(IloEnv & env, const IloInt& sigma, const IloInt& de
 		IloCplex cplx(env);
 		cplx.extract(subProblem);
 		
-		std::ostringstream oss;
+		/*std::ostringstream oss;
 		oss << "subModel_" << a << "_" << b << "_pulse" << ".LP";
 		std::string fname(oss.str());
-		cplx.exportModel(fname.c_str());
+		cplx.exportModel(fname.c_str()); */
 		
 
 		cplx.setOut(env.getNullStream());
+		cplx.setParam(IloCplex::Param::Threads, 4);
+		cplx.setParam(IloCplex::Param::TimeLimit, 10);
 
 		if (cplx.solve())
 		{
