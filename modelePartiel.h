@@ -94,15 +94,17 @@ class ModelePartiel
 			IloOplModel opl(_dat.getOplModel());
 			IloInt n(opl.getElement("n").asInt());
 
-			_x.end();
-			_u.end();
-		
+			for (IloInt i : _nonProcessed)
+			{
+				_x[i].clear();
+				_u[i].clear();
+			}
+	
+			_x[_precOrder].clear();
+			_u[_precOrder].clear();
 
-			
-			_alpha.end();
-			
-			_omega.end();
-			
+			_alpha.clear();
+			_omega.clear();
 
 		}
 };

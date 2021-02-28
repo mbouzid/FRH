@@ -24,7 +24,6 @@ IloOplRunConfiguration ModelePartiel::loadRC(IloEnv& env, const char* datfile)
 
 ModelePartiel* ModelePartiel::load(IloEnv& env, IloOplRunConfiguration& rc, const IloInt& a, const IloInt& b, const Orders& nonProcessed, const IloInt & precOrder, const IloInt & tt)
 {
-
 	IloInt T(rc.getOplModel().getElement("T").asInt());
 	IloInt n(rc.getOplModel().getElement("n").asInt());
 
@@ -84,12 +83,13 @@ void ModelePartiel::relaxAndFix(IloEnv& env, const char* datfile, const IloInt &
 
 		IloEnv env1;
 		std::cout << "a=" << a << "b=" << b << std::endl;
-		ModelePartiel* subProblem = load(env1, rc, 0, b,nonProc,precOrder,tt);
+		ModelePartiel* subProblem = load(env1, rc, a, b,nonProc,precOrder,tt);
 
 
 		if (k > 0)
 		{
 			IloInt to(std::max(IloInt(0), a - 1));
+		
 			std::cout << "fix from " << tt << " to " << to << std::endl;
 			subProblem->fix(env1,vals, tt, to);
 		}
@@ -115,6 +115,8 @@ void ModelePartiel::relaxAndFix(IloEnv& env, const char* datfile, const IloInt &
 			IloInt to(b - delta - 1);
 			std::cout << "get from " << a << " to " << to << std::endl;
 			subProblem->get(cplx,vals, a, to,nonProc,precOrder,tt);
+
+			std::cout << "done?" << std::endl;
 
 			for (IloInt i : nonProc)
 			{
@@ -149,9 +151,13 @@ void ModelePartiel::relaxAndFix(IloEnv& env, const char* datfile, const IloInt &
 			b = T;
 		}
 
+		std::cout << cplx.getNrows() << std::endl;
+
 		//subProblem->_model.end();
-		delete subProblem;
+		delete subProblem;	
+		cplx.end();
 		env1.end();
+	
 
 
 	}
@@ -188,10 +194,7 @@ void ModelePartiel::fix(IloEnv& env, const IntMatrix& vals, const IloInt& from, 
 	IloInt n(opl.getElement("n").asInt());
 
 
-	Orders E(_nonProcessed);
-	E.push_back(_precOrder);
-
-	for (IloInt i : E)
+	/*for (IloInt i : _nonProcessed)
 	{
 		for (IloInt t(from); t <= to; ++t)
 		{
@@ -199,8 +202,9 @@ void ModelePartiel::fix(IloEnv& env, const IntMatrix& vals, const IloInt& from, 
 				std::cout << "x#" << i << "#" << t << std::endl;
 			_model.add(_x[i][t] == vals[i][t]);
 		}
-	}
+	}*/
 
+	_model.add(_x[_precOrder][_tt] == 1);
 
 }
 
@@ -210,10 +214,6 @@ void ModelePartiel::get(IloCplex& cplx, IntMatrix& vals, const IloInt& from, con
 	IloInt n(opl.getElement("n").asInt());
 
 	Orders E(orders);
-	if (_precOrder == 0)
-	{
-		E.push_back(0);
-	}
 
 	IloInt prevOrder(_precOrder);
 
@@ -240,11 +240,16 @@ void ModelePartiel::get(IloCplex& cplx, IntMatrix& vals, const IloInt& from, con
 		}
 	}
 
-	if (prevOrder != precOrder and prevOrder != 0)
+	if (precOrder == 0)
+	{
+		vals[0][0] = 1;
+	}
+
+	/*if (prevOrder != precOrder and prevOrder != 0)
 	{
 	    if (std::find(orders.begin(), orders.end(), prevOrder) != orders.end())
 			orders.erase(std::find(orders.begin(), orders.end(), prevOrder));
-	}
+	}*/
 
 
 }
@@ -318,16 +323,13 @@ void ModelePartiel::initVars(IloEnv& env)
 
 
 
-	// E = non processed + previous order
-	Orders E(_nonProcessed);
-	E.push_back(_precOrder);
-
-	for (IloInt i : E)
+	for (IloInt i : _nonProcessed)
 	{
 		_x.emplace(i, std::map<IloInt, IloNumVar>());
 		_u.emplace(i, std::map<IloInt, IloNumVar>());
 
-		for (IloInt t(_tt); t <= _b; ++t)
+		IloInt lb(std::max(_a, _tt));
+		for (IloInt t(lb); t <= _b; ++t)
 		{
 			std::ostringstream oss;
 			oss << "x#" << i << "#" << t;
@@ -336,7 +338,7 @@ void ModelePartiel::initVars(IloEnv& env)
 			_x[i].emplace(t,IloNumVar(env, 0, 1, ILOBOOL, repr.c_str()));
 		}
 
-		for (IloInt j : E)
+		for (IloInt j : _nonProcessed)
 		{
 			std::ostringstream oss;
 			oss << "u#" << i << "#" << j;
@@ -345,8 +347,9 @@ void ModelePartiel::initVars(IloEnv& env)
 		}
 	}
 
-	
 
+	Orders E(_nonProcessed);
+	E.push_back(_precOrder);
 	// add alpha variables
 	for (IloInt j : E)
 	{
@@ -362,6 +365,24 @@ void ModelePartiel::initVars(IloEnv& env)
 	}
 
 
+	// prec Order
+	_x.emplace(_precOrder, std::map<IloInt, IloNumVar>());
+	std::ostringstream ossPrec;
+	ossPrec << "x#" << _precOrder << "#" << _tt;
+	std::string reprPrec(ossPrec.str());
+
+	// x[_precOrder][_tt]
+	_x[_precOrder].emplace(_tt, IloNumVar(env, 1, 1, ILOBOOL, reprPrec.c_str()));
+
+	// u[_precOrder][j]
+	for (IloInt j : _nonProcessed)
+	{
+		std::ostringstream oss;
+		oss << "u#" << _precOrder << "#" << j;
+		std::string repr(oss.str());
+		_u[_precOrder].emplace(j, IloNumVar(env, IloFalse, IloTrue, ILOBOOL, repr.c_str()));
+	}
+	
 }
 
 
@@ -386,8 +407,9 @@ void ModelePartiel::initObj(IloEnv& env)
 	IloExpr obj(env);
 	for (IloInt j : _nonProcessed)
 	{
+		IloInt lb(std::max(_tt, _a));
 		IloExpr profit(env);
-		for (IloInt t(std::max(_tt,r.get(j))); t <= std::min(_b,db.get(j) - p.get(j) + 1); ++t)
+		for (IloInt t(std::max(lb,r.get(j))); t <= std::min(_b,db.get(j) - p.get(j) + 1); ++t)
 		{
 			IloNum energyCostProcessing(0.0);
 			for (IloInt tp(0); tp < p.get(j); ++tp)
@@ -424,8 +446,8 @@ void ModelePartiel::initObj(IloEnv& env)
 
 		profit +=  
 			
-			//range
-			0.8
+			range
+			//0.8
 			* _alpha[j] * /*e.get(j)*/ f.getSub(j).get(std::min(db.get(j) - p.get(j)+1, _b )) ;
 
 
@@ -455,74 +477,80 @@ void ModelePartiel::initConstraints(IloEnv& env)
 	E.push_back(_precOrder);
 								   
 
+	long int nbConstraints(0);
+
 	// capacity	 
 
-
-	for (IloInt t(_tt); t <= _b; ++t)
+	std::cout << "capacity" << std::endl;
+	for (IloInt t(std::max(_a,_tt)); t <= _b; ++t)
 	{
 		IloExpr capacity(env);
-		for (IloInt j : E)
+		for (IloInt j : _nonProcessed)
 		{
 			capacity += _x[j][t];
+			
 		}
-		_model.add(capacity <= 1);
+		_model.add(capacity <= 1);	 
+		++nbConstraints;
 	}
 
 
+
+	std::cout << "capacity1" << std::endl;
 	// capacity 1
-	for (IloInt j : E)
+	for (IloInt j : _nonProcessed)
 	{
 		IloExpr sum(env);
-		for (IloInt t(std::max(_tt,r.get(j))); t <= std::min(_b,db.get(j) - p.get(j) + 1); ++t)
+		IloInt lb(std::max(_a, _tt));
+		for (IloInt t(std::max(lb,r.get(j))); t <= std::min(_b,db.get(j) - p.get(j) + 1); ++t)
 		{
 			sum += _x[j][t];
 		}
 		_model.add(sum <= 1);
+		++nbConstraints;
 	}
 
 
 
+
+	std::cout << "def1 & def2" << std::endl;
 	// def1	& def2
-	for (IloInt j : E)
+	for (IloInt j : _nonProcessed)
 	{
 		IloExpr sum1(env);
-		for (IloInt t(_tt); t < std::min(_b,r.get(j)); ++t)
+		IloInt lb(std::max(_a, _tt));
+		for (IloInt t(lb); t < std::min(_b,r.get(j)); ++t)
 		{
 			sum1 += _x[j][t];
 		}
 		_model.add(sum1 == 0);
+		++nbConstraints;
 
 		IloExpr sum2(env);
-		for (IloInt t(std::max(db.get(j) - p.get(j) + 2,_tt)); t <= _b; ++t)
+		for (IloInt t(std::max(db.get(j) - p.get(j) + 2,lb)); t <= _b; ++t)
 		{
 			sum1 += _x[j][t];
 		}
 		_model.add(sum1 == 0);
+		++nbConstraints;
 
 	}
 
-	/*if (_precOrder == 0)
-	{*/	 
-		_model.add(_x[_precOrder][_tt] == 1);
+	IloInt LB(std::max(_a, _tt));
+	_model.add(_x[_precOrder][_tt] == 1);
+	++nbConstraints;
 
-		IloExpr sumZ(env);
 
-		for (IloInt t(_tt+1); t <= _b; ++t)
+	for (IloInt i : _nonProcessed)
+	{
+		IloExpr sumI(env);
+		for (IloInt t(LB); t <= std::min(_b, _tt + p.get(_precOrder) + s.getSub(_precOrder).get(i)-1); ++t)
 		{
-			sumZ += _x[_precOrder][t];
+			sumI += _x[i][t];
 		}
-
-		_model.add(sumZ == 0);
-
-		for (IloInt i : _nonProcessed)
-		{
-			IloExpr sumI(env);
-			for (IloInt t(_tt); t <= std::min(_b, _tt + p.get(_precOrder) + s.getSub(_precOrder).get(i)-1); ++t)
-			{
-				sumI += _x[i][t];
-			}
-			_model.add(sumI == 0);
-		}
+		_model.add(sumI == 0);
+		++nbConstraints;
+	}
 
 
 	//}
@@ -536,11 +564,18 @@ void ModelePartiel::initConstraints(IloEnv& env)
 			if (i != j)
 			{
 				IloExpr sumA(env);
-				IloInt lb1(std::max(_tt, r.get(i)));
+				IloInt lb1(std::max(LB, r.get(i)));
 				IloInt ub1(std::min(_b,db.get(i) - p.get(i) + 1));
-				for (IloInt t(lb1); t <= ub1; ++t)
+				if (i == _precOrder)
 				{
-					sumA += (t)*_x[i][t];
+					sumA += _tt * _x[_precOrder][_tt];
+				}
+				else
+				{
+					for (IloInt t(lb1); t <= ub1; ++t)
+					{
+						sumA += (t)*_x[i][t];
+					}
 				}
 				sumA += ((s.getSub(i).get(j) + p.get(i)) * _u[i][j]) - (db.get(i)) * (1 - _u[i][j])
 					- (db.get(i)) * (1 - _omega[j]) - db.get(i) * (1 - _omega[i]) + db.get(i) * (_omega[i] - _omega[j])
@@ -550,7 +585,7 @@ void ModelePartiel::initConstraints(IloEnv& env)
 				/*if (i == 0)
 					sumA += _x[0][0]; */
 
-				IloInt lb(std::max(_tt,r.get(j) + s.getSub(i).get(j) + 1));
+				IloInt lb(std::max(LB,r.get(j) + s.getSub(i).get(j) + 1));
 
 
 				IloInt ub(std::min(db.get(j) - p.get(j) + 1, _b));
@@ -568,8 +603,9 @@ void ModelePartiel::initConstraints(IloEnv& env)
 
 				prec.setName(name.c_str());
 
-				_model.add(prec);
 
+				_model.add(prec);
+				++nbConstraints;
 
 
 			}
@@ -588,13 +624,9 @@ void ModelePartiel::initConstraints(IloEnv& env)
 			}
 		}
 
-		IloExpr sum2(env);
-		for (IloInt t(std::max(_tt,r.get(i))); t <= std::min(_b,db.get(i) - p.get(i) + 1); ++t)
-		{
-			sum2 += _x[i][t];
-		}
 
 		_model.add(sum1 <= _omega[i]);
+		++nbConstraints;
 	}
 
 
@@ -612,6 +644,7 @@ void ModelePartiel::initConstraints(IloEnv& env)
 
 
 		_model.add(sum1 == _omega[i]);
+		++nbConstraints;
 	}
 
 	// approx
@@ -639,31 +672,38 @@ void ModelePartiel::initConstraints(IloEnv& env)
 	IloConstraint approx(sum <= T - _b);
 	approx.setName("approx");
 	_model.add(approx);
+	++nbConstraints;
 
 	std::cout << "T-b=" << T - _b << std::endl;
 
 
 	// define omega
-	for (IloInt j : E)
+	for (IloInt j : _nonProcessed)
 	{
 		IloExpr subsum2(env);
 
-		for (IloInt t(_tt); t <= _b; ++t)
+		for (IloInt t(LB); t <= _b; ++t)
 		{
 			subsum2 += _x[j][t];
 		}
 
 		_model.add(_omega[j] >= subsum2);
+		++nbConstraints;
 	}
 
 	// link alpha omega
-	for (IloInt j : E)
+	for (IloInt j : _nonProcessed)
 	{
 		_model.add(_alpha[j] <= 1 - _omega[j]);
+		++nbConstraints;
 		_model.add(_omega[j] <= 1 - _alpha[j]);
+		++nbConstraints;
 	}
 
+	_model.add(_alpha[_precOrder] == 0);
+	++nbConstraints;
 	_model.add(_omega[_precOrder] == 1);
+	++nbConstraints;
 
 	// si b + p_j >= db_j - p_j => omega[j] = 0
 
@@ -676,12 +716,14 @@ void ModelePartiel::initConstraints(IloEnv& env)
 		}
 	}*/
 	
-	for (IloInt j : E)
+	for (IloInt j : _nonProcessed)
 	{
 		if (_b >= db.get(j))
 		{
 			_model.add(_alpha[j] == 0);
+			++nbConstraints;
 		}
 	}
 
+	std::cout << "NB CONSTRAINTS = " << nbConstraints << std::endl;
 }
