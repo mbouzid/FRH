@@ -10,8 +10,16 @@ int main(int argc, char* argv[])
 
 	auto start = std::chrono::system_clock::now();
 
-	ModelePartiel::relaxAndFix(env, argv[1], atoi(argv[2]), atoi(argv[3]));
-	
+	try
+	{
+		ModelePartiel::relaxAndFix(env, argv[1], atoi(argv[2]), atoi(argv[3]));
+	}
+	catch (const IloException & e)
+	{
+		std::cout << e << std::endl;
+
+	}
+
 	auto end = std::chrono::system_clock::now();
 
 	std::chrono::duration<double> elapsed_seconds = end - start;

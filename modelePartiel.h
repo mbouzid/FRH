@@ -1,11 +1,18 @@
 #pragma once
 #include <ilopl/iloopl.h>
+#include <vector>
+#include <map>
 
 
 typedef IloArray<IloNumVarArray>  NumVarMatrix;
 typedef IloArray<IloNumArray> NumMatrix;
 typedef IloArray<IloIntArray> IntMatrix;
-#include <vector>
+typedef std::vector<IloInt> Orders;
+
+typedef std::map <IloInt, std::map <IloInt, IloNumVar> > VarMatrix;
+typedef std::map <IloInt, IloNumVar> VarArray;
+
+
 
 class ModelePartiel
 {
@@ -20,13 +27,14 @@ class ModelePartiel
 		IloInt _a;
 		IloInt _b;
 
+		Orders _nonProcessed;
+		IloInt _precOrder;
 
-		NumVarMatrix _x;
-		NumVarMatrix _u;
+		VarMatrix _x;
+		VarMatrix _u;
 
-		IloNumVarArray _alpha;
-		IloNumVarArray _omega;
-
+		VarArray _alpha;
+		VarArray _omega;
 
 		static IloOplRunConfiguration loadRC(IloEnv& env, const char* datfile);
 
@@ -42,31 +50,38 @@ class ModelePartiel
 			IloEnv& env,
 			const IloOplRunConfiguration& dat,
 			const IloInt & a,
-			const IloInt & b
+			const IloInt & b   ,
+			const Orders & nonProcessed,
+			const IloInt & precOrder
 		) :
 			_model(env),
 			_dat(dat),
 			_a(a),
 			_b(b),
-			_x(env),
-			_u(env),
-			_alpha(env),
-			_omega(env)
+			_nonProcessed(nonProcessed),
+			_precOrder(precOrder),
+			_x(),
+			_u(),
+			_alpha(),
+			_omega()
 
 		{
+			std::cout << "initVars" << std::endl;
 			initVars(env);
+			std::cout << "initObj" << std::endl;
 			initObj(env);
+			std::cout << "initConstraints" << std::endl;
 			initConstraints(env);
 		}
 
 
-		static ModelePartiel* load(IloEnv& env, IloOplRunConfiguration& rc, const IloInt& a, const IloInt& b);
+		static ModelePartiel* load(IloEnv& env, IloOplRunConfiguration& rc, const IloInt& a, const IloInt& b, const Orders & nonProcessed, const IloInt & precOrder);
 
 		static void relaxAndFix(IloEnv & env,  const char * datfile, const IloInt& sigma, const IloInt & delta);
 
 		void fix(IloEnv& env, const IntMatrix & vals, const IloInt & from, const IloInt & to);
 
-		void get(IloCplex& cplx, IntMatrix & vals, const IloInt& from, const IloInt& to, std::vector<IloInt> & orders);
+		void get(IloCplex& cplx, IntMatrix & vals, const IloInt& from, const IloInt& to, std::vector<IloInt> & orders, IloInt& precOrder);
 
 		~ModelePartiel()
 		{
