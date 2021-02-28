@@ -342,3 +342,7 @@ healthchecksdb
 # dat
 *.dat
 *.LP
+/tests_FRPulse_benchmark
+/tests_FRPulse_benchmark_25_5
+/readResults3.py
+/runtuned.py

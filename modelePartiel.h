@@ -29,6 +29,8 @@ class ModelePartiel
 
 		Orders _nonProcessed;
 		IloInt _precOrder;
+		// starting time of precOrder
+		IloInt _tt;
 
 		VarMatrix _x;
 		VarMatrix _u;
@@ -52,7 +54,8 @@ class ModelePartiel
 			const IloInt & a,
 			const IloInt & b   ,
 			const Orders & nonProcessed,
-			const IloInt & precOrder
+			const IloInt & precOrder,
+			const IloInt & tt
 		) :
 			_model(env),
 			_dat(dat),
@@ -60,6 +63,7 @@ class ModelePartiel
 			_b(b),
 			_nonProcessed(nonProcessed),
 			_precOrder(precOrder),
+			_tt(tt),
 			_x(),
 			_u(),
 			_alpha(),
@@ -75,13 +79,15 @@ class ModelePartiel
 		}
 
 
-		static ModelePartiel* load(IloEnv& env, IloOplRunConfiguration& rc, const IloInt& a, const IloInt& b, const Orders & nonProcessed, const IloInt & precOrder);
+		static ModelePartiel* load(IloEnv& env, IloOplRunConfiguration& rc, const IloInt& a, const IloInt& b, const Orders & nonProcessed, const IloInt & precOrder, const IloInt & tt);
 
 		static void relaxAndFix(IloEnv & env,  const char * datfile, const IloInt& sigma, const IloInt & delta);
 
 		void fix(IloEnv& env, const IntMatrix & vals, const IloInt & from, const IloInt & to);
 
-		void get(IloCplex& cplx, IntMatrix & vals, const IloInt& from, const IloInt& to, std::vector<IloInt> & orders, IloInt& precOrder);
+		void get(IloCplex& cplx, IntMatrix & vals, const IloInt& from, const IloInt& to, std::vector<IloInt> & orders, IloInt& precOrder, IloInt & tt);
+
+		static double computeObj(IloOplRunConfiguration& opl, const IntMatrix & vals, const Orders & sequence);
 
 		~ModelePartiel()
 		{
