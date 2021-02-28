@@ -72,6 +72,4 @@ int smax = max(i in 0..n, j in 1..n: i!=j) s[i][j];
 int Smax[j in 1..n] = max(i in 0..n) s[i][j];
 int Smin[j in 1..n] = min(i in 0..n: i!=j) s[i][j];
 
-int C[i in 0..n][j in 1..n][t in 0..T] = sum(tp in t-1-s[i][j]..t-1) c[j][t];
-
 
