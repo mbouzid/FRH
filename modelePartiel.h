@@ -5,6 +5,7 @@
 typedef IloArray<IloNumVarArray>  NumVarMatrix;
 typedef IloArray<IloNumArray> NumMatrix;
 typedef IloArray<IloIntArray> IntMatrix;
+#include <vector>
 
 class ModelePartiel
 {
@@ -58,7 +59,6 @@ class ModelePartiel
 			initConstraints(env);
 		}
 
-		void test(IloEnv& env);
 
 		static ModelePartiel* load(IloEnv& env, IloOplRunConfiguration& rc, const IloInt& a, const IloInt& b);
 
@@ -66,37 +66,23 @@ class ModelePartiel
 
 		void fix(IloEnv& env, const IntMatrix & vals, const IloInt & from, const IloInt & to);
 
-		void get(IloCplex& cplx, IntMatrix & vals, const IloInt& from, const IloInt& to);
+		void get(IloCplex& cplx, IntMatrix & vals, const IloInt& from, const IloInt& to, std::vector<IloInt> & orders);
 
 		~ModelePartiel()
 		{
-			std::cout << "~ModelePartiel()" << std::endl;
 			IloOplModel opl(_dat.getOplModel());
 			IloInt n(opl.getElement("n").asInt());
 
-
-			
-			/*for (IloInt i(0); i <= n; ++i)
-			{
-				_x[i].endElements();
-				_u[i].endElements();
-			}*/
 			_x.end();
 			_u.end();
 		
 
 			
-		//	_alpha.endElements();	
 			_alpha.end();
 			
-//			_omega.endElements();
 			_omega.end();
 			
 
-			
-		
-		//	_model.end();	
-		//	_dat.getOplModel().end();
 		}
 };
 

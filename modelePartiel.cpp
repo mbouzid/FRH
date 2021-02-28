@@ -22,42 +22,6 @@ IloOplRunConfiguration ModelePartiel::loadRC(IloEnv& env, const char* datfile)
 	return rc;
 }
 
-void ModelePartiel::test(IloEnv& env)
-{
-
-	IloOplModel opl(_dat.getOplModel());
-	IloInt n(opl.getElement("n").asInt());
-	IloCplex cplx(env);
-
-	cplx.extract(_model);
-
-	cplx.exportModel("test.LP");
-
-	cplx.solve();
-
-
-	for (IloInt i(0); i <= n; ++i)
-	{
-		for (IloInt t(0); t <= _b; ++t)
-		{
-			std::cout << cplx.getIntValue(_x[i][t]);
-		}
-		std::cout << std::endl;
-	}
-
-
-	for (IloInt i(0); i <= n; ++i)
-	{
-		std::cout << "omega#" << i << "=" << cplx.getValue(_omega[i]) << std::endl;
-	}
-
-	for (IloInt i(1); i <= n; ++i)
-	{
-		std::cout << "alpha#" << i << "=" << cplx.getValue(_alpha[i]) << std::endl;
-	}
-
-
-}
 
 ModelePartiel* ModelePartiel::load(IloEnv & env, IloOplRunConfiguration & rc, const IloInt & a, const IloInt & b)
 {
@@ -96,6 +60,7 @@ void ModelePartiel::relaxAndFix(IloEnv& env, const char* datfile, const IloInt &
 
 	double timeBudg(3600);
 	
+	std::vector<IloInt> orders;
 	while (b < T)
 	{
 		IloEnv env1;
@@ -130,14 +95,12 @@ void ModelePartiel::relaxAndFix(IloEnv& env, const char* datfile, const IloInt &
 
 			IloInt to(b - delta - 1);
 			std::cout << "get from " << a << " to " << to << std::endl;
-			subProblem->get(cplx,vals, a, to);
+			subProblem->get(cplx,vals, a, to,orders);
 
 			for (IloInt i(0); i <= n; ++i)
 			{
 				std::cout << "omega#" << i << "=" << cplx.getValue(subProblem->_omega[i]) << std::endl;
 			}
-
-			
 
 			for (IloInt i(1); i <= n; ++i)
 			{
@@ -145,6 +108,13 @@ void ModelePartiel::relaxAndFix(IloEnv& env, const char* datfile, const IloInt &
 			}	 
 			
 			std::cout << "partial obj=" << cplx.getObjValue() << std::endl;
+
+			std::cout << "processed orders: " << std::endl;
+			for (IloInt i : orders)
+			{
+				std::cout << i << " ";
+			}
+			std::cout << std::endl;
 		}
 		else
 		{
@@ -200,18 +170,19 @@ void ModelePartiel::fix(IloEnv& env, const IntMatrix& vals, const IloInt& from, 
 
 }
 
-void ModelePartiel::get(IloCplex& cplx, IntMatrix& vals, const IloInt& from, const IloInt& to)
+void ModelePartiel::get(IloCplex& cplx, IntMatrix& vals, const IloInt& from, const IloInt& to, std::vector <IloInt> & orders)
 {
 	IloOplModel opl(_dat.getOplModel());
 	IloInt n(opl.getElement("n").asInt());
-
-	for (IloInt i(0); i <= n; ++i)
+	for (IloInt t(from); t <= to; ++t)
 	{
-		for (IloInt t(from); t <= to; ++t)
+		for (IloInt i(0); i <= n; ++i)
 		{
 			IloNumVar x(_x[i][t]);
 
 			vals[i][t] = IloRound(cplx.getValue(_x[i][t]));
+			if (vals[i][t] == 1)
+				orders.push_back(i);
 		}
 	}
 }
