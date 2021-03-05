@@ -3,6 +3,7 @@
 #include <vector>
 #include <map>
 
+#include "types.h"
 
 typedef IloArray<IloNumVarArray>  NumVarMatrix;
 typedef IloArray<IloNumArray> NumMatrix;
@@ -25,6 +26,9 @@ class ModelePartiel
 
 		IloModel _model;
 		IloOplRunConfiguration _dat;
+
+		SETUP _setup;
+
 
 		IloInt _a;
 		IloInt _b;
@@ -58,6 +62,7 @@ class ModelePartiel
 		(
 			IloEnv& env,
 			const IloOplRunConfiguration& dat,
+			SETUP setup,
 			const IloInt & a,
 			const IloInt & b   ,
 			const Orders & nonProcessed,
@@ -66,6 +71,7 @@ class ModelePartiel
 		) :
 			_model(env),
 			_dat(dat),
+			_setup(setup),
 			_a(a),
 			_b(b),
 			_nonProcessed(nonProcessed),
@@ -87,11 +93,11 @@ class ModelePartiel
 		}
 
 
-		static ModelePartiel* load(IloEnv& env, IloOplRunConfiguration& rc, const IloInt& a, const IloInt& b, const Orders & nonProcessed, const IloInt & precOrder, const IloInt & tt);
+		static ModelePartiel* load(IloEnv& env, IloOplRunConfiguration& rc, SETUP setup, const IloInt& a, const IloInt& b, const Orders & nonProcessed, const IloInt & precOrder, const IloInt & tt);
 
-		static void relaxAndFix(IloEnv & env,  const char * datfile, const IloInt& sigma, const IloInt & delta);
+		static void relaxAndFix(IloEnv & env,  const char * datfile, const IloInt& sigma, const IloInt & delta, SETUP setup);
 
-		static void relaxAndFixLoop(IloOplRunConfiguration& rc, const IloInt& k, const IloInt& a, const IloInt& b, const IloInt& delta, IloInt& prec, Orders& nonProc, IloInt& tt, IntMatrix & vals);
+		static void relaxAndFixLoop(IloOplRunConfiguration& rc, SETUP setup, const IloInt& k, const IloInt& a, const IloInt& b, const IloInt& delta, IloInt& prec, Orders& nonProc, IloInt& tt, IntMatrix & vals);
 
 
 		void fix(IloEnv& env, const IntMatrix & vals, const IloInt & from, const IloInt & to);

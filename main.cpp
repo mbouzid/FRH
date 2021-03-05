@@ -1,24 +1,13 @@
 #include <cstdlib>
 #include <chrono>
-#include "modelePartiel.h"
+#include "utils.h"
 
 int main(int argc, char* argv[])
 {
-	IloEnv env;
-
-	env.setDeleter(IloSafeDeleterMode);
 
 	auto start = std::chrono::system_clock::now();
 
-	try
-	{
-		ModelePartiel::relaxAndFix(env, argv[1], atoi(argv[2]), atoi(argv[3]));
-	}
-	catch (const IloException & e)
-	{
-		std::cout << e << std::endl;
-
-	}
+	utils::process(argv, argc);
 
 	auto end = std::chrono::system_clock::now();
 

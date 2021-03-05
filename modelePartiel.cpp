@@ -1,6 +1,6 @@
 #include "modelePartiel.h"
 
-
+#include "utils.h"
 #include <algorithm>
 
 const char* ModelePartiel::s_params = "params.mod";
@@ -22,17 +22,17 @@ IloOplRunConfiguration ModelePartiel::loadRC(IloEnv& env, const char* datfile)
 }
 
 
-ModelePartiel* ModelePartiel::load(IloEnv& env, IloOplRunConfiguration& rc, const IloInt& a, const IloInt& b, const Orders& nonProcessed, const IloInt & precOrder, const IloInt & tt)
+ModelePartiel* ModelePartiel::load(IloEnv& env, IloOplRunConfiguration& rc, SETUP setup, const IloInt& a, const IloInt& b, const Orders& nonProcessed, const IloInt & precOrder, const IloInt & tt)
 {
 	IloInt T(rc.getOplModel().getElement("T").asInt());
 	IloInt n(rc.getOplModel().getElement("n").asInt());
 
 
-	return new ModelePartiel(env, rc, a,b,nonProcessed, precOrder,tt);
+	return new ModelePartiel(env, rc,setup, a,b,nonProcessed, precOrder,tt);
 
 }
 
-void ModelePartiel::relaxAndFix(IloEnv& env, const char* datfile, const IloInt & sigma, const IloInt & delta)
+void ModelePartiel::relaxAndFix(IloEnv& env, const char* datfile, const IloInt & sigma, const IloInt & delta, SETUP setup)
 {
 	IloOplRunConfiguration rc(loadRC(env, datfile));
 
@@ -76,7 +76,7 @@ void ModelePartiel::relaxAndFix(IloEnv& env, const char* datfile, const IloInt &
 	while (b < T)
 	{
 		
-		relaxAndFixLoop(rc, k, a, b, delta, precOrder, nonProc, tt, vals);
+		relaxAndFixLoop(rc, setup, k, a, b, delta, precOrder, nonProc, tt, vals);
 
 		a = b - delta;
 		b = b + sigma - delta;
@@ -90,7 +90,7 @@ void ModelePartiel::relaxAndFix(IloEnv& env, const char* datfile, const IloInt &
 
 
 	std::cout << "last loop" << std::endl;
-	relaxAndFixLoop(rc, k, a, b, delta, precOrder, nonProc, tt, vals);
+	relaxAndFixLoop(rc, setup, k, a, b, delta, precOrder, nonProc, tt, vals);
 	
 
 
@@ -127,7 +127,7 @@ void ModelePartiel::relaxAndFix(IloEnv& env, const char* datfile, const IloInt &
 
 }
 
-void ModelePartiel::relaxAndFixLoop(IloOplRunConfiguration& rc, const IloInt& k, const IloInt& a, const IloInt& b, const IloInt& delta, IloInt & precOrder, Orders & nonProc, IloInt & tt, IntMatrix& vals)
+void ModelePartiel::relaxAndFixLoop(IloOplRunConfiguration& rc, SETUP setup, const IloInt& k, const IloInt& a, const IloInt& b, const IloInt& delta, IloInt & precOrder, Orders & nonProc, IloInt & tt, IntMatrix& vals)
 {
 	std::cout << "non processed orders: " << std::endl;
 	for (IloInt i : nonProc)
@@ -140,7 +140,7 @@ void ModelePartiel::relaxAndFixLoop(IloOplRunConfiguration& rc, const IloInt& k,
 
 	IloEnv env1;
 	std::cout << "a=" << a << "b=" << b << std::endl;
-	ModelePartiel* subProblem = load(env1, rc, a, b, nonProc, precOrder, tt);
+	ModelePartiel* subProblem = load(env1, rc, setup, a, b, nonProc, precOrder, tt);
 
 
 	if (k > 0)
@@ -711,19 +711,10 @@ void ModelePartiel::initConstraints(IloEnv& env)
 	// approx
 
 	IloExpr sum(env);
-	for (IloInt j : E)
+	for (IloInt j : _nonProcessed)
 	{
 
-
-		// max
-		std::vector<IloInt> setups;
-		for (IloInt i : E)
-		{
-			if (i != j)
-				setups.push_back(s.getSub(i).get(j));
-		}
-
-		IloInt setup(*std::max_element(setups.begin(), setups.end()));
+		IloInt setup(utils::computeSetup(_setup,j,E,s));
 
 
 
