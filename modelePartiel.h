@@ -9,6 +9,8 @@ typedef IloArray<IloNumArray> NumMatrix;
 typedef IloArray<IloIntArray> IntMatrix;
 typedef std::vector<IloInt> Orders;
 
+
+
 typedef std::map <IloInt, std::map <IloInt, IloNumVar> > VarMatrix;
 typedef std::map <IloInt, IloNumVar> VarArray;
 
@@ -37,6 +39,11 @@ class ModelePartiel
 
 		VarArray _alpha;
 		VarArray _omega;
+
+		VarArray _CES;
+
+
+
 
 		static IloOplRunConfiguration loadRC(IloEnv& env, const char* datfile);
 
@@ -67,7 +74,8 @@ class ModelePartiel
 			_x(),
 			_u(),
 			_alpha(),
-			_omega()
+			_omega(),
+			_CES()
 
 		{
 			std::cout << "initVars" << std::endl;
@@ -82,6 +90,9 @@ class ModelePartiel
 		static ModelePartiel* load(IloEnv& env, IloOplRunConfiguration& rc, const IloInt& a, const IloInt& b, const Orders & nonProcessed, const IloInt & precOrder, const IloInt & tt);
 
 		static void relaxAndFix(IloEnv & env,  const char * datfile, const IloInt& sigma, const IloInt & delta);
+
+		static void relaxAndFixLoop(IloOplRunConfiguration& rc, const IloInt& k, const IloInt& a, const IloInt& b, const IloInt& delta, IloInt& prec, Orders& nonProc, IloInt& tt, IntMatrix & vals);
+
 
 		void fix(IloEnv& env, const IntMatrix & vals, const IloInt & from, const IloInt & to);
 

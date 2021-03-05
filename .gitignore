@@ -346,3 +346,8 @@ healthchecksdb
 /tests_FRPulse_benchmark_25_5
 /readResults3.py
 /runtuned.py
+/tests_doe
+/tests_doe_coeff
+/runall.py
+/rundoe.py
+/sol100_941.txt
