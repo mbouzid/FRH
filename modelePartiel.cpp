@@ -94,32 +94,57 @@ void ModelePartiel::relaxAndFix(IloEnv& env, const char* datfile, const IloInt &
 	
 
 
-	for (IloInt i(0); i <= n; ++i)
+	/*for (IloInt i(0); i <= n; ++i)
 	{
 		for (IloInt t(0); t <= T; ++t)
 		{
 			std::cout << vals[i][t];
 		}
 		std::cout << std::endl;
-	}
+	}*/
 
 	Orders seq;
+	std::map<IloInt, IloInt> u;
 	// get sequence dirty
+	IloInt previous(0);
 	for (IloInt t(0); t <= T; ++t)
 	{
 		for (IloInt i(1); i <= n; ++i)
 		{
 			if (vals[i][t])
 			{
+				u.emplace(previous, i);
+				previous = i;
 				seq.push_back(i);
 			}
 		}
 	}
 
-	std::cout << "seq=0" ;
-	for (IloInt i : seq)
+	IloOplModel opl(rc.getOplModel());
+	IloIntMap p(opl.getElement("p").asIntMap());
+	IloIntMap s(opl.getElement("s").asIntMap());
+	for (IloInt i(0); i <= n; ++i)
 	{
-		std::cout << "," << i ;
+		for (IloInt t(0); t <= T; ++t)
+		{
+			if (vals[i][t] == 1)
+			{
+				if (u.find(i) != u.end())
+				{
+					IloInt prev(u.at(i));
+					//std::cout << "ST[" << i << "]==" << t - s.getSub(prev).get(i) -1 << ";" << std::endl;
+					std::cout << "C[" << i << "]==" << t + p.get(i) -1 << ";" << std::endl;
+				}
+			}
+		}
+
+	}
+
+
+
+	for (const std::pair<IloInt,IloInt> & p : u)
+	{
+		std::cout << "u[" << p.first << "][" << p.second << "]==" << 1 << ";" << std::endl;
 	}
 	std::cout << std::endl;
 
@@ -325,6 +350,13 @@ double ModelePartiel::computeObj(IloOplRunConfiguration& rc, const IntMatrix& va
 	return obj;
 }
 
+void ModelePartiel::printSol(std::ostream& os, const IntMatrix& vals)
+{
+
+
+
+}
+
 
 void ModelePartiel::initVars(IloEnv& env)
 {
@@ -453,6 +485,10 @@ void ModelePartiel::initObj(IloEnv& env)
 
 	IloNum savg(ssum /(IloNum) (_nonProcessed.size()*E.size()));
 
+	
+
+
+
 	IloExpr obj(env);
 	for (IloInt j : _nonProcessed)
 	{
@@ -487,7 +523,7 @@ void ModelePartiel::initObj(IloEnv& env)
 			}
 
 
-			profit += _x[j][t] * (f.getSub(j).get(t + p.get(j) - 1) - energyCostProcessing
+			profit += _x[j][t] * (f.getSub(j).get(t + p.get(j) - 1) - energyCostProcessing 
 				//- energyCostSetup
 				);
 
@@ -495,9 +531,10 @@ void ModelePartiel::initObj(IloEnv& env)
 
 		IloNum rangeTito2021(((db.get(j) - r.get(j)) / (T+p.get(j))));
 
-		IloNum coeff((w.get(j) / p.get(j)) * std::exp(-((std::max(d.get(j) - p.get(j) - _b, IloInt(0)) / (pavg * 0.9))))
-			* std::exp(-((10) / (0.9*savg))));
-
+	/*	IloInt setup(utils::computeSetup(_setup, j, _nonProcessed, s));
+		IloNum coeff((w.get(j) / p.get(j)) * std::exp(-((std::max(db.get(j) - p.get(j) - _b,  _a) / (pavg * 0.9))))
+			* std::exp(-((setup) / (0.9*savg))));
+	 */
 		profit +=
 			
 			/*_alpha[j] * (1/coeff);
@@ -506,10 +543,8 @@ void ModelePartiel::initObj(IloEnv& env)
 			/*0.8
 			* _alpha[j] * f.getSub(j).get(std::min(db.get(j) - p.get(j)+1, _b )) ;	 */
 
-			
-
-			
-			_alpha[j] * f.getSub(j).get(std::min(db.get(j) - p.get(j) + 1, _b));
+					
+			(0.8) * _alpha[j] * f.getSub(j).get(std::min(db.get(j) - p.get(j) + 1, _b));
 		
 
 		obj += profit - _CES[j];

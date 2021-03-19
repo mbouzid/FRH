@@ -106,6 +106,8 @@ class ModelePartiel
 
 		static double computeObj(IloOplRunConfiguration& opl, const IntMatrix & vals, const Orders & sequence);
 
+		void printSol(std::ostream & os, const IntMatrix & vals);
+
 		~ModelePartiel()
 		{
 			IloOplModel opl(_dat.getOplModel());

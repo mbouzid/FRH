@@ -351,3 +351,7 @@ healthchecksdb
 /runall.py
 /rundoe.py
 /sol100_941.txt
+/exps_30_15_MIN
+/exps_no_coeff
+/valid_FRPulse
+/readResults4.py
