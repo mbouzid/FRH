@@ -24,12 +24,7 @@ IloOplRunConfiguration ModelePartiel::loadRC(IloEnv& env, const char* datfile)
 
 ModelePartiel* ModelePartiel::load(IloEnv& env, IloOplRunConfiguration& rc, SETUP setup, const IloInt& a, const IloInt& b, const Orders& nonProcessed, const IloInt & precOrder, const IloInt & tt)
 {
-	IloInt T(rc.getOplModel().getElement("T").asInt());
-	IloInt n(rc.getOplModel().getElement("n").asInt());
-
-
 	return new ModelePartiel(env, rc,setup, a,b,nonProcessed, precOrder,tt);
-
 }
 
 void ModelePartiel::relaxAndFix(IloEnv& env, const char* datfile, const IloInt & sigma, const IloInt & delta, SETUP setup)
@@ -39,11 +34,7 @@ void ModelePartiel::relaxAndFix(IloEnv& env, const char* datfile, const IloInt &
 	IloInt T(rc.getOplModel().getElement("T").asInt());
 	IloInt n(rc.getOplModel().getElement("n").asInt());
 
- 
-	//IloNumMap CES(rc.getOplModel().getElement("C").asNumMap());
 
-	//std::cout << CES.getSub(IloInt(0)).getSub(IloInt(2)).get(IloInt(30)) << std::endl;
-	
 	IloInt b(sigma - 1);
 	IloInt a(0);
 	IloInt k(0);
@@ -93,15 +84,6 @@ void ModelePartiel::relaxAndFix(IloEnv& env, const char* datfile, const IloInt &
 	relaxAndFixLoop(rc, setup, k, a, b, delta, precOrder, nonProc, tt, vals);
 	
 
-
-	/*for (IloInt i(0); i <= n; ++i)
-	{
-		for (IloInt t(0); t <= T; ++t)
-		{
-			std::cout << vals[i][t];
-		}
-		std::cout << std::endl;
-	}*/
 
 	Orders seq;
 	std::map<IloInt, IloInt> u;

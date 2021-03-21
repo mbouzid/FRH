@@ -1,6 +1,7 @@
 #include "utils.h"
 #include <algorithm>
 #include "modelePartiel.h"
+#include "ModelePartielOnOff.h"
 
 int utils::process(char** argv, int argc)
 {
@@ -25,7 +26,7 @@ int utils::process(char** argv, int argc)
 		SETUP stype(parseArg(argv[4]));
 
 
-		ModelePartiel::relaxAndFix(env, datfile,sigma, delta,stype);
+		ModelePartielOnOff::relaxAndFix(env, datfile,sigma, delta,stype);
 	}
 	catch (const IloException& e)
 	{

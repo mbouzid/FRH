@@ -143,12 +143,14 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="modelePartiel.cpp" />
+    <ClCompile Include="ModelePartielOnOff.cpp" />
     <ClCompile Include="modelpulse.cpp" />
     <ClCompile Include="types.cpp" />
     <ClCompile Include="utils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="modelePartiel.h" />
+    <ClInclude Include="ModelePartielOnOff.h" />
     <ClInclude Include="modelpulse.h" />
     <ClInclude Include="types.h" />
     <ClInclude Include="utils.h" />
