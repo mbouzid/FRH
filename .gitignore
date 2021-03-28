@@ -355,3 +355,6 @@ healthchecksdb
 /exps_no_coeff
 /valid_FRPulse
 /readResults4.py
+/tests_table
+/valid_FROnOff
+/runtunedOnOff.py

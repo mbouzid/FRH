@@ -115,12 +115,12 @@ class ModelePartielOnOff
 
 		static void relaxAndFix(IloEnv& env, const char* datfile, const IloInt& sigma, const IloInt& delta, SETUP setup);
 
-		static void relaxAndFixLoop(IloOplRunConfiguration& rc, SETUP setup, const IloInt& k, const IloInt& a, const IloInt& b, const IloInt& delta, IloInt& precOrder, Orders& nonProc, std::vector< IloInt>& tt, IntMatrix& vals);
+		static void relaxAndFixLoop(IloOplRunConfiguration& rc, SETUP setup, const IloInt& k, const IloInt& a, const IloInt& b, const IloInt& delta, IloInt& precOrder, Orders& nonProc, std::vector< IloInt>& tt, IntMatrix& vals, IntMatrix & yvals);
 
 
-		void fix(IloEnv& env, const IntMatrix& vals, const IloInt& from, const IloInt& to);
+		void fix(IloEnv& env, const IntMatrix& xvals, const IntMatrix & yvals, const IloInt& from, const IloInt& to);
 
-		void get(IloCplex& cplx, IntMatrix& vals, const IloInt& from, const IloInt& to, std::vector<IloInt>& orders, IloInt& precOrder, std::vector<IloInt>& tt);
+		void get(IloCplex& cplx, IntMatrix& vals, IntMatrix & yvals, const IloInt& from, const IloInt& to, std::vector<IloInt>& orders, IloInt& precOrder, std::vector<IloInt>& tt);
 
 		static double computeObj(IloOplRunConfiguration& rc, const IntMatrix& xvals, const IntMatrix & yvals, const IntArray & A, const IntArray & Tardiness, const Orders& sequence);
 
