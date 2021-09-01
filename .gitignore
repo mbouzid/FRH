@@ -358,3 +358,7 @@ healthchecksdb
 /tests_table
 /valid_FROnOff
 /runtunedOnOff.py
+/stats1_FRPulse
+/stats_FRPulse
+/valid_FROnOff_20_5_max
+/valid_FROnOff_30_15_min

@@ -25,8 +25,8 @@ int utils::process(char** argv, int argc)
 		IloInt delta(atoi(argv[3]));
 		SETUP stype(parseArg(argv[4]));
 
-
-		ModelePartielOnOff::relaxAndFix(env, datfile,sigma, delta,stype);
+		ModelePartiel::relaxAndFix(env, datfile, sigma, delta, stype);
+		//ModelePartielOnOff::relaxAndFix(env, datfile,sigma, delta,stype);
 	}
 	catch (const IloException& e)
 	{

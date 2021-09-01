@@ -84,14 +84,19 @@ class ModelePartiel
 			_CES()
 
 		{
-			std::cout << "initVars" << std::endl;
+			//std::cout << "initVars" << std::endl;
 			initVars(env);
-			std::cout << "initObj" << std::endl;
+			//std::cout << "initObj" << std::endl;
 			initObj(env);
-			std::cout << "initConstraints" << std::endl;
+			//std::cout << "initConstraints" << std::endl;
 			initConstraints(env);
 		}
 
+
+		// get the number of released orders between a and b
+		std::vector<IloInt> getNumberOfReleasedOrders(IloInt a, IloInt b, const std::vector <IloInt> & nonProc);
+
+		std::vector<IloInt> getNumberOfDeadlineOrders(IloInt a, IloInt b, const std::vector <IloInt>& nonProc);
 
 		static ModelePartiel* load(IloEnv& env, IloOplRunConfiguration& rc, SETUP setup, const IloInt& a, const IloInt& b, const Orders & nonProcessed, const IloInt & precOrder, const IloInt & tt);
 

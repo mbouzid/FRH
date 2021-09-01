@@ -22,6 +22,44 @@ IloOplRunConfiguration ModelePartiel::loadRC(IloEnv& env, const char* datfile)
 }
 
 
+std::vector<IloInt> ModelePartiel::getNumberOfReleasedOrders(IloInt a, IloInt b, const std::vector <IloInt>& nonProc)
+{
+	IloOplModel opl(_dat.getOplModel());
+
+	IloIntMap r(opl.getElement("r").asIntMap());
+
+
+	std::vector<IloInt> releasedOrders;
+	for (IloInt i : nonProc)
+	{
+		if (r.get(i) >= a and r.get(i) <= b)
+		{
+			releasedOrders.push_back(i);
+		}
+	}
+	
+	return releasedOrders;
+}
+
+std::vector<IloInt> ModelePartiel::getNumberOfDeadlineOrders(IloInt a, IloInt b, const std::vector<IloInt>& nonProc)
+{
+	IloOplModel opl(_dat.getOplModel());
+
+	IloIntMap r(opl.getElement("db").asIntMap());
+
+
+	std::vector<IloInt> deadlineOrders;
+	for (IloInt i : nonProc)
+	{
+		if (r.get(i) >= a and r.get(i) <= b)
+		{
+			deadlineOrders.push_back(i);
+		}
+	}
+
+	return deadlineOrders;
+}
+
 ModelePartiel* ModelePartiel::load(IloEnv& env, IloOplRunConfiguration& rc, SETUP setup, const IloInt& a, const IloInt& b, const Orders& nonProcessed, const IloInt & precOrder, const IloInt & tt)
 {
 	return new ModelePartiel(env, rc,setup, a,b,nonProcessed, precOrder,tt);
@@ -64,6 +102,8 @@ void ModelePartiel::relaxAndFix(IloEnv& env, const char* datfile, const IloInt &
 
 	double timeBudg(3600);
 	
+	//std::cout << "a;b;nonProc;released;deadline;status;nodes;nrows;ncols;niter" << std::endl;
+
 	while (b < T)
 	{
 		
@@ -80,7 +120,7 @@ void ModelePartiel::relaxAndFix(IloEnv& env, const char* datfile, const IloInt &
 	}
 
 
-	std::cout << "last loop" << std::endl;
+	//std::cout << "last loop" << std::endl;
 	relaxAndFixLoop(rc, setup, k, a, b, delta, precOrder, nonProc, tt, vals);
 	
 
@@ -136,25 +176,31 @@ void ModelePartiel::relaxAndFix(IloEnv& env, const char* datfile, const IloInt &
 
 void ModelePartiel::relaxAndFixLoop(IloOplRunConfiguration& rc, SETUP setup, const IloInt& k, const IloInt& a, const IloInt& b, const IloInt& delta, IloInt & precOrder, Orders & nonProc, IloInt & tt, IntMatrix& vals)
 {
-	std::cout << "non processed orders: " << std::endl;
+
+
+
+
+	/*std::cout << "non processed orders: " << std::endl;
 	for (IloInt i : nonProc)
 	{
 		std::cout << i << " ";
 	}
 	std::cout << std::endl;
 
-	std::cout << "precOrder=" << precOrder << std::endl;
+	std::cout << "precOrder=" << precOrder << std::endl;   */
 
 	IloEnv env1;
-	std::cout << "a=" << a << "b=" << b << std::endl;
 	ModelePartiel* subProblem = load(env1, rc, setup, a, b, nonProc, precOrder, tt);
+
+
+	//std::cout <<  a << ";" << b << ";" << nonProc.size() << ";" << subProblem->getNumberOfReleasedOrders(a, b, nonProc).size() << ";" << subProblem->getNumberOfDeadlineOrders(a, b, nonProc).size() << ";";
 
 
 	if (k > 0)
 	{
 		IloInt to(std::max(IloInt(0), a - 1));
 
-		std::cout << "fix from " << tt << " to " << to << std::endl;
+		//std::cout << "fix from " << tt << " to " << to << std::endl;
 		subProblem->fix(env1, vals, tt, to);
 	}
 
@@ -174,13 +220,13 @@ void ModelePartiel::relaxAndFixLoop(IloOplRunConfiguration& rc, SETUP setup, con
 	if (cplx.solve())
 	{
 
-		std::cout << cplx.getStatus() << std::endl;
+		//std::cout << cplx.getStatus() << ";" << cplx.getNnodes() << ";" << cplx.getNrows() << ";" << cplx.getNcols() << ";" << cplx.getNiterations() << std::endl;
 
 		IloInt to(b - delta - 1);
-		std::cout << "get from " << a << " to " << to << std::endl;
+		//std::cout << "get from " << a << " to " << to << std::endl;
 		subProblem->get(cplx, vals, a, to, nonProc, precOrder, tt);
 
-		for (IloInt i : nonProc)
+	/*	for (IloInt i : nonProc)
 		{
 			std::cout << "omega#" << i << "=" << cplx.getValue(subProblem->_omega[i]) << std::endl;
 		}
@@ -191,7 +237,7 @@ void ModelePartiel::relaxAndFixLoop(IloOplRunConfiguration& rc, SETUP setup, con
 		}
 
 		std::cout << "partial obj=" << cplx.getObjValue() << std::endl;
-		std::cout << "tt=" << tt << std::endl;
+		std::cout << "tt=" << tt << std::endl; */
 
 	}
 	else
@@ -743,7 +789,7 @@ void ModelePartiel::initConstraints(IloEnv& env)
 	_model.add(approx);
 	++nbConstraints;
 
-	std::cout << "T-b=" << T - _b << std::endl;
+	//std::cout << "T-b=" << T - _b << std::endl;
 
 
 	// define omega
@@ -839,7 +885,7 @@ void ModelePartiel::initConstraints(IloEnv& env)
 		}
 	}
 
-	std::cout << "NB CONSTRAINTS = " << nbConstraints << std::endl;
+	//std::cout << nbConstraints << "," ;
 
 	for (IloInt i : E)
 	{

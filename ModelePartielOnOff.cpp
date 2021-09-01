@@ -99,26 +99,31 @@ void ModelePartielOnOff::initVars(IloEnv& env)
 
 	// prec Order
 	_x.emplace(_precOrder, std::map<IloInt, IloNumVar>());
-	for (IloInt t(_a); t<= T ; ++t)
-	{
-		std::ostringstream ossPrec;
-		ossPrec << "x#" << _precOrder << "#" << t;
-		std::string reprPrec(ossPrec.str());
+	
+	
 
-		_x[_precOrder].emplace(t, IloNumVar(env, 0, 1, ILOBOOL, reprPrec.c_str()));
-	}
 	for (IloInt t : _tt)
 	{
 		std::ostringstream ossPrec;
 		ossPrec << "x#" << _precOrder << "#" << t;
 		std::string reprPrec(ossPrec.str());
 
-		if (_x.at(_precOrder).find(t) == _x.at(_precOrder).end())
-		{
-			_x[_precOrder].emplace(t, IloNumVar(env, 1, 1, ILOBOOL, reprPrec.c_str()));
-		}
+		_x[_precOrder].emplace(t, IloNumVar(env, 1, 1, ILOBOOL, reprPrec.c_str()));
+		
 	}
 
+	for (IloInt t(_a); t <= _b; ++t)
+	{
+		std::ostringstream ossPrec;
+		ossPrec << "x#" << _precOrder << "#" << t;
+		std::string reprPrec(ossPrec.str());
+
+		std::vector<IloInt>::iterator found(std::find(_tt.begin(), _tt.end(), t));
+		if (found == _tt.end())
+		{
+			_x[_precOrder].emplace(t, IloNumVar(env, 0, 0, ILOBOOL, reprPrec.c_str()));
+		}
+	}
 	
 	// a 
 	std::ostringstream oss2;
@@ -201,9 +206,16 @@ void ModelePartielOnOff::initConstraints(IloEnv& env)
 	for (IloInt t(_a); t <= _b; ++t)
 	{
 		IloExpr sum(env);
-		for (IloInt j : _nonProcessed)
+		for (IloInt j : E)
 		{
-			sum += (_x[j][t] + _y[j][t]);
+			if (j == _precOrder)
+			{
+				sum += _x[j][t];
+			}
+			else
+			{
+				sum += (_x[j][t] + _y[j][t]);
+			}
 		}
 		_model.add(sum <= 1);
 
@@ -222,6 +234,13 @@ void ModelePartielOnOff::initConstraints(IloEnv& env)
 		_model.add(((r.get(i) + p.get(i)) * _omega.at(i)) <= _C[i] );
 	}
 
+	// Completion times for prec order
+	if (_precOrder != 0)
+	{
+		_model.add(_C[_precOrder] == _tt.at(_tt.size()-1));
+	}
+
+
 	// Retard
 	for (IloInt i : _nonProcessed)
 	{
@@ -230,24 +249,36 @@ void ModelePartielOnOff::initConstraints(IloEnv& env)
 		_model.add(_T[i] <= (db.get(i) - d.get(i)) * _omega[i]);
 	}
 
+	if (_precOrder != 0)
+	{
+		// Retard for precorder
+		_model.add(_T[_precOrder] >= _C[_precOrder] - d.get(_precOrder) * _omega[_precOrder]);
+		_model.add(_T[_precOrder] >= IloInt(0));
+		_model.add(_T[_precOrder] <= (db.get(_precOrder) - d.get(_precOrder)) * _omega[_precOrder]);
+	}
+
 
 	//	C4
 	for (IloInt j : _nonProcessed)
 	{
-		IloExpr sum(env);
-		for (IloInt t(std::max(_a, r.get(j))); t <= std::min(_b, db.get(j)); ++t)
+		if (j != _precOrder)
 		{
-			sum += _x[j][t];
-		}
+			IloExpr sum(env);
+			for (IloInt t(std::max(_a, r.get(j))); t <= std::min(_b, db.get(j)); ++t)
+			{
+				sum += _x[j][t];
+			}
 
-		_model.add(sum == p.get(j) * _omega[j]);
+			_model.add(sum == p.get(j) * _omega[j]);
+		}
 	}
 
+	
 	for (IloInt j : _nonProcessed)
 	{
 		IloInt ub(std::min(_b, db.get(j) - p.get(j)));
 		IloInt lb(std::max(_a, r.get(j)));
-		//IloInt ub(db.get(j));
+		
 		for (IloInt t(lb); t <= ub; ++t)
 		{
 
@@ -335,11 +366,11 @@ void ModelePartielOnOff::initConstraints(IloEnv& env)
 					}
 
 					_model.add(sumY >=	s.getSub(i).get(j) * (_u[i][j] + _x[j][t] - 1)
-						// - s.getSub(i).get(j)*(1-_omega[i])
+						// - s.getSub(i).get(j)*(_alpha[j])
 						
 
 					);
-
+						   
 
 				}
 			}
@@ -399,8 +430,8 @@ void ModelePartielOnOff::initConstraints(IloEnv& env)
 						for (IloInt tp : _tt)
 						{
 							sum += _x[i][tp];
-
 						}
+
 					}
 					else
 					{
@@ -410,16 +441,11 @@ void ModelePartielOnOff::initConstraints(IloEnv& env)
 
 						}
 					}
+				
+					_model.add(sum >= (p.get(i)) * (_u[i][j] + _y[j][t] - 1)
+					//	- p.get(i) * _alpha[j]
+					);
 					
-					if (_precOrder == 0)
-					{
-
-						_model.add(sum >=  (_u[i][j] + _y[j][t] - 1));
-					}
-					else
-					{
-						_model.add(sum >= p.get(i) * (_u[i][j] + _y[j][t] - 1));
-					}
 					
 
 				}
@@ -467,6 +493,7 @@ void ModelePartielOnOff::initConstraints(IloEnv& env)
 		std::cout << "x#" << _precOrder << "#" << t << std::endl;
 		_model.add(_x[_precOrder][t] == 1);
 	}
+
 	// x_jt (t = non prod) => =0
 	for (IloInt t(_a); t <= _b; ++t)
 	{
@@ -475,7 +502,9 @@ void ModelePartielOnOff::initConstraints(IloEnv& env)
 		{
 			_model.add(_x[_precOrder][t] == 0);
 		}
+
 	}
+	
 
 	IloExpr sumApprox(env);
 	for (IloInt j : _nonProcessed)
@@ -706,14 +735,14 @@ void ModelePartielOnOff::relaxAndFixLoop(IloOplRunConfiguration& rc, SETUP setup
 	IloCplex cplx(env1);
 	cplx.extract(subProblem->_model.getImpl());
 
-	cplx.setOut(env1.getNullStream());
+	//cplx.setOut(env1.getNullStream());
 	cplx.setParam(IloCplex::Param::Threads, 4);
-	cplx.setParam(IloCplex::Param::TimeLimit, 15);
+	cplx.setParam(IloCplex::Param::TimeLimit, 40);
 
 	/*std::ostringstream oss;
-	oss << "subModel_" << a << "_" << b << "_pulse" << ".LP";
+	oss << "subModel_" << a << "_" << b << "_onoff" << ".LP";
 	std::string fname(oss.str());
-	cplx.exportModel(fname.c_str());*/
+	cplx.exportModel(fname.c_str());   */
 
 	if (cplx.solve())
 	{
@@ -777,43 +806,39 @@ void ModelePartielOnOff::fix(IloEnv& env, const IntMatrix& vals, const IntMatrix
 
 }
 
-void ModelePartielOnOff::get(IloCplex& cplx, IntMatrix& vals, IntMatrix& yvals, const IloInt& from, const IloInt& to, std::vector<IloInt>& orders, IloInt& precOrder, std::vector<IloInt>& tt)
+void ModelePartielOnOff::get(IloCplex& cplx, IntMatrix& xvals, IntMatrix& yvals, const IloInt& from, const IloInt& to, std::vector<IloInt>& orders, IloInt& precOrder, std::vector<IloInt>& tt)
 {
 	IloOplModel opl(_dat.getOplModel());
 	IloInt n(opl.getElement("n").asInt());
 	IloIntMap p(opl.getElement("p").asIntMap());
 
-	Orders E(orders);
-
-	IloInt prevOrder(_precOrder);
-
-	//E.push_back(0);
-
 	std::map<IloInt, std::vector<IloInt> > Xvals, Yvals;
+
+	std::cout << "FROM " << from << " TO " << to << std::endl;
 
 	for (IloInt t(from); t <= to; ++t)
 	{
-		for (IloInt i : E)
+		for (IloInt i : orders)
 		{
 			IloNumVar x(_x[i][t]);
 			
-			IloInt val(IloRound(cplx.getValue(_x[i][t])));
+			IloInt valx(IloRound(cplx.getValue(_x[i][t])));
 			IloInt valy(IloRound(cplx.getValue(_y[i][t])));
 
 			// y_jt 
-			if (valy == 1 and i != 0)
+			if (valy == 1)
 			{
 				if (Yvals.find(i) == Yvals.end())
 				{
 					Yvals.emplace(i, std::vector<IloInt>());
 				}
 
-
 				Yvals[i].push_back(t);
+				yvals[i][t] = 1;
 			}
 
 			// x_jt
-			if (val == 1 and i != 0)
+			if (valx == 1)
 			{
 				if (Xvals.find(i) == Xvals.end())
 				{
@@ -821,42 +846,85 @@ void ModelePartielOnOff::get(IloCplex& cplx, IntMatrix& vals, IntMatrix& yvals, 
 				}
 				
 				Xvals[i].push_back(t);
-			}
-
-
-			if (Xvals.find(i) != Xvals.end())
-			{
-				// order is completed
-				if (Xvals.at(i).size() == p.get(i))
-				{
-
-					orders.erase(std::find(orders.begin(), orders.end(), i));
-
-					precOrder = i;
-
-					tt.clear();
-					for (IloInt tp : Xvals.at(i))
-					{
-						vals[i][tp] = 1;
-						tt.push_back(tp);
-					}
-
-					// feed yvals matrix
-					for (IloInt tp : Yvals.at(i))
-					{
-						yvals[i][tp] = 1;
-					}
-
-					Xvals.erase(i);
-				}
+				
+				precOrder = i;
+				
 			}
 
 		}
 	}
 
-	if (precOrder == 0)
-	{
-		vals[0][0] = 1;
+
+	if (precOrder != 0)
+	{	
+		// clearing previous tt
+		if (precOrder != _precOrder)
+			tt.clear();
+
+		// orders
+		for (const std::pair<IloInt, std::vector<IloInt>>& p : Xvals)
+		{
+
+			IloInt i(p.first);
+			std::cout << "i=" << i << std::endl;
+
+			Orders::iterator found(std::find(orders.begin(), orders.end(), i));
+			if (found != orders.end())
+			{
+				orders.erase(std::find(orders.begin(), orders.end(), i));
+			}
+
+
+			// put x_jt = 1
+			for (IloInt t : p.second)
+			{
+				xvals[i][t] = 1;
+				if (i == precOrder)
+				{
+					std::cout << "x#" << precOrder << "#" << t << std::endl;
+					tt.push_back(t);
+				}
+			}
+
+		}
+	
+
+		if (not Yvals.empty())
+		{
+			for (const std::pair<IloInt, std::vector<IloInt>>& p : Yvals)
+			{
+				IloInt i(p.first);
+
+				// put x_jt = 1
+				for (IloInt t : p.second)
+				{
+					yvals[i][t] = 1;
+				}
+			}
+		}
+		
+		if (not Xvals.empty())
+		{
+			if (p.get(precOrder) != Xvals.at(precOrder).size())
+			{
+				IloInt reste(p.get(precOrder) - tt.size());
+				IloInt last(tt.at(tt.size() - 1) + 1);
+
+				for (IloInt tp(last); tp <= last + reste; ++tp)
+				{
+					std::cout << "x#" << precOrder << "#" << tp << std::endl;
+					xvals[precOrder][tp] = 1;
+					tt.push_back(tp);
+
+				}
+			}
+		}
+
+
+	}
+	else
+	{ 
+		xvals[0][0] = 1;
 	}
 
 
