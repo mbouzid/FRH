@@ -60,7 +60,7 @@ class ModelPulse
 		void prepareRelaxedModel(IloEnv& env, IloModel & model, const IloInt& a, const IloInt& b);
 
 
-		void convertToBool(IloEnv & env, IloModel & model, const IloInt& from, const IloInt& to);
+		void convertToBool(IloEnv & env, IloExtractableArray & conversions, const IloInt& from, const IloInt& to);
 
 		void fix(IloModel & model, const IloInt& from, const IloInt& to);
 

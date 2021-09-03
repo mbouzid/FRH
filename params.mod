@@ -71,3 +71,6 @@ int smin = min(i in 0..n, j in 1..n: i!=j) s[i][j];
 int smax = max(i in 0..n, j in 1..n: i!=j) s[i][j];
 int Smax[j in 1..n] = max(i in 0..n) s[i][j];
 int Smin[j in 1..n] = min(i in 0..n: i!=j) s[i][j];
+
+float C[i in 0..n][j in 1..n][t in 0..T] = ((t>=r[j]+s[i][j]+1) && (t<=db[j]-p[j]+1) )? sum(tp in t-s[i][j]..t-1) c[j][tp] : 0;
+

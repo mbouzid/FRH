@@ -341,3 +341,24 @@ healthchecksdb
 
 # dat
 *.dat
+*.LP
+/tests_FRPulse_benchmark
+/tests_FRPulse_benchmark_25_5
+/readResults3.py
+/runtuned.py
+/tests_doe
+/tests_doe_coeff
+/runall.py
+/rundoe.py
+/sol100_941.txt
+/exps_30_15_MIN
+/exps_no_coeff
+/valid_FRPulse
+/readResults4.py
+/tests_table
+/valid_FROnOff
+/runtunedOnOff.py
+/stats1_FRPulse
+/stats_FRPulse
+/valid_FROnOff_20_5_max
+/valid_FROnOff_30_15_min
